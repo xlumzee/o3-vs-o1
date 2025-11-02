@@ -1,0 +1,5 @@
+Model	Input	Cached input	Output
+o1	$15.00	$7.50	$60.00
+o1-pro	$150.00	-	$600.00
+o3-pro	$20.00	-	$80.00
+o3	$2.00	$0.50	$8.00

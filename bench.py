@@ -1,0 +1,202 @@
+import time, json, os, pandas as pd, random, re
+from dotenv import load_dotenv
+from openai import OpenAI
+from colorama import Fore, Style, init
+
+# ---------- setup ----------
+load_dotenv()
+init(autoreset=True)
+client = OpenAI()
+
+# --- update these if pricing changes (check docs before you run) ---
+PRICING = {
+    "o3": {"in": 2.00/1_000_000,  "out": 8.00/1_000_000},
+    "o1": {"in":15.00/1_000_000,  "out":60.00/1_000_000},
+    # Optional:
+    # "o3-pro": {"in":20.00/1_000_000, "out":80.00/1_000_000},
+    # "o3-mini": {"in":1.10/1_000_000, "out":1.10/1_000_000},
+    # "o1-mini": {"in":1.10/1_000_000, "out":1.10/1_000_000},
+}
+
+MODELS = ["o1","o3"]           # edit if you want to test fewer/more models
+MAX_RETRIES = 4                # for transient 429 rate limits
+BACKOFF_BASE_SEC = 1.0
+DEFAULT_MAX_OUTPUT_TOKENS = 300  # global safety cap
+
+# ---------- core runner with retries ----------
+def run_one(model: str, prompt: str, effort="medium", max_output_tokens=DEFAULT_MAX_OUTPUT_TOKENS):
+    """
+    Run one prompt against a model with basic exponential backoff for 429s.
+    Raises RuntimeError("INSUFFICIENT_QUOTA") if the API reports insufficient quota.
+    """
+    attempt = 0
+    while True:
+        t0 = time.time()
+        try:
+            resp = client.responses.create(
+                model=model,
+                input=prompt,
+                max_output_tokens=max_output_tokens,
+                reasoning={"effort": effort}  # harmless if model ignores it # type: ignore
+            )
+            dt = round(time.time() - t0, 2)
+
+            # unified helpers
+            text = getattr(resp, "output_text", "") or ""
+            usage = getattr(resp, "usage", None)
+
+            in_tok     = getattr(usage, "input_tokens", 0) if usage else 0
+            out_tok    = getattr(usage, "output_tokens", 0) if usage else 0
+            reason_tok = getattr(usage, "reasoning_tokens", 0) if usage else 0
+
+            pin  = PRICING[model]["in"]  * in_tok
+            pout = PRICING[model]["out"] * out_tok
+            cost = round(pin + pout, 6)
+
+            return {
+                "model": model, "latency_s": dt,
+                "input_tokens": in_tok, "output_tokens": out_tok,
+                "reasoning_tokens": reason_tok, "cost_usd": cost,
+                "response": text
+            }
+
+        except Exception as e:
+            # Detect insufficient quota (hard stop)
+            msg = str(e).lower()
+            if "insufficient_quota" in msg or "you exceeded your current quota" in msg:
+                raise RuntimeError("INSUFFICIENT_QUOTA") from e
+
+            # Handle generic 429 / rate limit with exponential backoff
+            if "429" in msg or "rate limit" in msg:
+                if attempt >= MAX_RETRIES:
+                    # Bubble up after exhausting retries
+                    raise
+                sleep_s = BACKOFF_BASE_SEC * (2 ** attempt) + random.uniform(0, 0.3)
+                attempt += 1
+                time.sleep(sleep_s)
+                continue
+            # Unknown error: re-raise
+            raise
+
+# ---------- smarter, task-aware grading ----------
+def grade(row, expected_exact, expected_contains):
+    """
+    Returns "✅" or "❌" (or "—" if not gradable).
+    Also includes task-specific grading heuristics for logic/math/code.
+    """
+    ans  = (row.get("response") or "").strip()
+    task = (row.get("task_id") or "").strip().lower()
+
+    # Task-specific grading
+    if task == "logic_1":
+        # Accept common phrasings for the classic mislabeled boxes puzzle:
+        # The correct first draw is from the box labeled "apples and oranges"
+        normalized = ans.lower()
+        phrases = [
+            "box that is labeled \"apples and oranges\"",
+            "box that is labeled 'apples and oranges'",
+            "box labeled “apples and oranges”",
+            "box labeled 'apples and oranges'",
+            "box labeled \"apples and oranges\"",
+            "box labeled apples and oranges",
+            "apples+oranges"
+        ]
+        return "✅" if any(p in normalized for p in phrases) else "❌"
+
+    if task == "math_1":
+        # We want exact integer 583220. Strip everything to digits and a minus sign.
+        target = "583220"
+        digits = re.sub(r"[^0-9-]", "", ans)
+        return "✅" if target == digits else "❌"
+
+    if task == "code_1":
+        # Look for a corrected fib plus a minimal test that asserts fib(1)==1.
+        has_fix  = bool(re.search(r"def\s+fib(?:onacci)?\s*\(", ans))
+        has_test = ("assert fib(1) == 1" in ans) or ("assert fibonacci(1) == 1" in ans)
+        return "✅" if (has_fix and has_test) else "❌"
+
+    # Generic fallbacks (optional hints from prompts.jsonl)
+    if expected_exact and expected_exact.strip():
+        return "✅" if expected_exact.strip() == ans else "❌"
+    if expected_contains and expected_contains.strip():
+        return "✅" if expected_contains.lower() in ans.lower() else "❌"
+
+    return "—"
+
+# ---------- main loop ----------
+def main():
+    rows = []
+    with open("prompts.jsonl") as f:
+        for line in f:
+            rec = json.loads(line)
+            task_id = rec.get("task_id","")
+
+            # small per-task cap tweak: logic can be tighter; math/code need a bit more room
+            per_task_cap = (
+                220 if task_id == "logic_1"
+                else 512 if task_id in {"math_1","code_1"}
+                else DEFAULT_MAX_OUTPUT_TOKENS
+            )
+
+            for m in MODELS:
+                try:
+                    r = run_one(m, rec["prompt"], effort="medium", max_output_tokens=per_task_cap)
+                except RuntimeError as ex:
+                    if str(ex) == "INSUFFICIENT_QUOTA":
+                        print(f"\n{Fore.RED}✖ Stopping: API reports insufficient quota. Check your plan/billing and try again.{Style.RESET_ALL}")
+                        # Flush partial results if any rows exist
+                        if rows:
+                            df = pd.DataFrame(rows, columns=[
+                                "task_id","model","correct","latency_s",
+                                "input_tokens","output_tokens","reasoning_tokens","cost_usd","response"
+                            ])
+                            df.to_csv("results_partial.csv", index=False)
+                            print(f"{Fore.YELLOW}Saved partial results to results_partial.csv{Style.RESET_ALL}")
+                        return
+                    else:
+                        # Unknown error during run_one; log and continue to next (best-effort)
+                        print(f"{Fore.YELLOW}! Skipping {m} on {task_id} due to error: {ex}{Style.RESET_ALL}")
+                        continue
+
+                r.update({"task_id": task_id})
+                r["correct"] = grade(r, rec.get("expected_exact",""), rec.get("expected_contains",""))
+                rows.append(r)
+
+                # ---- Live console feedback (colored) ----
+                total_toks = r["input_tokens"] + r["output_tokens"] + r.get("reasoning_tokens", 0)
+                if r["correct"] == "✅":
+                    color = Fore.GREEN
+                elif r["correct"] == "❌":
+                    color = Fore.RED
+                else:
+                    color = Fore.YELLOW
+
+                print(
+                    f"{color}[{m}] {task_id} | "
+                    f"{total_toks} toks | {r['latency_s']} s | "
+                    f"${r['cost_usd']:.5f} {r['correct']}{Style.RESET_ALL}"
+                )
+
+    df = pd.DataFrame(rows, columns=[
+        "task_id","model","correct","latency_s",
+        "input_tokens","output_tokens","reasoning_tokens","cost_usd","response"
+    ])
+    df.to_csv("results.csv", index=False)
+
+    # pretty summary for LinkedIn screencap
+    pivot = (df
+             .groupby(["model"])
+             .agg(correct=("correct", lambda s: f"{sum(x=='✅' for x in s)}/{len(s)}"),
+                  avg_latency_s=("latency_s","mean"),
+                  avg_cost_usd=("cost_usd","mean"),
+                  avg_reason_toks=("reasoning_tokens","mean"))
+             .reset_index())
+
+    print(f"\n{Fore.CYAN}💰 Estimated total cost: ${df['cost_usd'].sum():.4f}{Style.RESET_ALL}")
+    print(pivot.to_string(index=False))
+    with open("summary.md","w") as w:
+        w.write(pivot.to_markdown(index=False))
+    print("\nSaved results.csv and summary.md")
+
+if __name__ == "__main__":
+    main()

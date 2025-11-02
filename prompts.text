@@ -1,0 +1,48 @@
+You have three boxes with the following labels:
+- Box A: "apples"
+- Box B: "oranges"  
+- Box C: "apples and oranges"
+
+However, you are told that ALL three labels are incorrect - each box is mislabeled.
+
+Your task: Determine which single box you should draw one item from in order to correctly relabel all three boxes. Explain your reasoning step-by-step, showing:
+1. Which box you would choose to draw from first
+2. Why this choice allows you to deduce the contents of all three boxes
+3. How you would relabel each box based on what you draw
+
+Be concise but complete in your explanation.
+```
+
+## Math Benchmark Prompt
+```
+Given the function f(n) = Σ(k²) for k=1 to n (the sum of squares from 1 to n):
+
+Calculate f(120) exactly. 
+
+Show your work, including:
+- The formula or method you use
+- All calculation steps
+- The final exact numerical answer
+
+Do not use approximations. Provide the precise integer result.
+```
+
+## Code Benchmark Prompt
+```
+The following Python function is supposed to return the nth Fibonacci number, but it produces an incorrect result when n=1:
+
+def fibonacci(n):
+    if n == 0:
+        return 0
+    elif n == 1:
+        return 0
+    else:
+        return fibonacci(n-1) + fibonacci(n-2)
+
+Tasks:
+1. Identify and fix the bug
+2. Provide the corrected function
+3. Add a 2-line unit test that verifies the function works correctly for n=1
+
+Note: The Fibonacci sequence should be: 0, 1, 1, 2, 3, 5, 8, 13, ...
+(where F(0)=0, F(1)=1, F(2)=1, etc.)

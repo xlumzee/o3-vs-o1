@@ -1,0 +1,8 @@
+Models: o3 vs o1 
+	•	API: Use the Responses API (reasoning models work best there; you also get reasoning-token usage).  ￼
+	•	Controls: temperature=0, identical prompts, no tools.
+	•	Metrics to log: 
+            correctness (✅/❌), 
+            latency (s), 
+            input/output/reasoning tokens, 
+            and $ cost using current per-model pricing.
