@@ -1,0 +1,46 @@
+I initially started with setting up the API key from openai platform and creating the structure/scope/code
+
+I had to add credits to the openai platform in order to do the experiments. It is separate from the gpt portal so payment information doesnt transfer.
+
+After adding credits and fixing the code a little bit, the experiments began.
+
+The code has been revised 3 times
+I tried running only o1 first, was successfull with that 
+
+[o1] logic_1 | 256 toks | 5.9 s | $0.01536 ❌
+[o1] math_1 | 635 toks | 3.12 s | $0.03454 ❌
+[o1] code_1 | 192 toks | 4.61 s | $0.01152 ❌
+
+then i ran o1 and o3 
+
+[o1] logic_1 | 699 toks | 4.46 s | $0.03551 ❌
+[o3] logic_1 | 432 toks | 5.59 s | $0.00260 ❌
+[o1] math_1 | 635 toks | 4.14 s | $0.03454 ❌
+[o3] math_1 | 335 toks | 3.66 s | $0.00221 ❌
+[o1] code_1 | 447 toks | 5.29 s | $0.01917 ✅
+[o3] code_1 | 426 toks | 5.85 s | $0.00239 ❌
+
+then i revised the bench.py and made the the prompts shorter and concise and then it again
+
+[o1] logic_1 | 473 toks | 2.72 s | $0.02564 ❌
+[o3] logic_1 | 207 toks | 8.45 s | $0.00129 ❌
+[o1] math_1 | 1066 toks | 5.49 s | $0.06207 ❌
+[o3] math_1 | 306 toks | 2.45 s | $0.00220 ✅
+[o1] code_1 | 448 toks | 7.03 s | $0.02688 ❌
+[o3] code_1 | 609 toks | 7.27 s | $0.00429 ❌
+
+then i created the git repo and pushed everything there
+
+[o1] logic_1 | 473 toks | 4.09 s | $0.02564 ❌
+[o3] logic_1 | 253 toks | 5.21 s | $0.00166 ❌
+[o1] math_1 | 1066 toks | 5.14 s | $0.06207 ❌
+[o3] math_1 | 498 toks | 5.19 s | $0.00373 ✅
+[o1] code_1 | 1121 toks | 6.04 s | $0.06290 ❌
+[o3] code_1 | 437 toks | 4.39 s | $0.00291 ✅
+
+💰 Estimated total cost: $0.1589
+model correct  avg_latency_s  avg_cost_usd  avg_reason_toks
+   o1     0/3           5.09      0.050200              0.0
+   o3     2/3           4.93      0.002768              0.0
+
+I will now be updating the logic for the grader, which 

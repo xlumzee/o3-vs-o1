@@ -79,19 +79,25 @@ def run_one(model: str, prompt: str, effort="medium", max_output_tokens=DEFAULT_
             raise
 
 # ---------- smarter, task-aware grading ----------
+import re as _re
+
 def grade(row, expected_exact, expected_contains):
     """
     Returns "✅" or "❌" (or "—" if not gradable).
-    Also includes task-specific grading heuristics for logic/math/code.
+    Task-aware grading with robust parsing so minor wording/formatting differences
+    don't falsely penalize the model.
     """
     ans  = (row.get("response") or "").strip()
     task = (row.get("task_id") or "").strip().lower()
 
-    # Task-specific grading
+    # ---- logic_1: mislabeled boxes ----
     if task == "logic_1":
-        # Accept common phrasings for the classic mislabeled boxes puzzle:
-        # The correct first draw is from the box labeled "apples and oranges"
         normalized = ans.lower()
+        # 1) Prefer explicit BOX: X extraction (A/B/C)
+        m = _re.search(r"box\s*:\s*([abc])\b", normalized)
+        if m:
+            return "✅" if m.group(1) == "c" else "❌"
+        # 2) Otherwise accept well-known phrasing variants
         phrases = [
             "box that is labeled \"apples and oranges\"",
             "box that is labeled 'apples and oranges'",
@@ -103,19 +109,25 @@ def grade(row, expected_exact, expected_contains):
         ]
         return "✅" if any(p in normalized for p in phrases) else "❌"
 
+    # ---- math_1: sum of squares f(120) ----
     if task == "math_1":
-        # We want exact integer 583220. Strip everything to digits and a minus sign.
         target = "583220"
-        digits = re.sub(r"[^0-9-]", "", ans)
-        return "✅" if target == digits else "❌"
+        # Strategy: if there's a clean single integer, use it; otherwise take the LAST integer appearing
+        nums = _re.findall(r"-?\d+", ans)
+        if not nums:
+            return "❌"
+        candidate = nums[-1]  # typically the final answer
+        return "✅" if candidate == target else "❌"
 
+    # ---- code_1: Fibonacci fix + asserts ----
     if task == "code_1":
-        # Look for a corrected fib plus a minimal test that asserts fib(1)==1.
-        has_fix  = bool(re.search(r"def\s+fib(?:onacci)?\s*\(", ans))
-        has_test = ("assert fib(1) == 1" in ans) or ("assert fibonacci(1) == 1" in ans)
-        return "✅" if (has_fix and has_test) else "❌"
+        # Accept either recursive or iterative solution; require a fib function and both asserts
+        has_func  = bool(_re.search(r"def\s+fib(?:onacci)?\s*\(", ans))
+        has_t0    = "assert fib(0) == 0" in ans or "assert fibonacci(0) == 0" in ans
+        has_t1    = "assert fib(1) == 1" in ans or "assert fibonacci(1) == 1" in ans
+        return "✅" if (has_func and has_t0 and has_t1) else "❌"
 
-    # Generic fallbacks (optional hints from prompts.jsonl)
+    # ---- generic fallbacks (optional hints from prompts.jsonl) ----
     if expected_exact and expected_exact.strip():
         return "✅" if expected_exact.strip() == ans else "❌"
     if expected_contains and expected_contains.strip():
@@ -176,6 +188,10 @@ def main():
                     f"{total_toks} toks | {r['latency_s']} s | "
                     f"${r['cost_usd']:.5f} {r['correct']}{Style.RESET_ALL}"
                 )
+                # If incorrect, print a short preview to help debug grader/prompt
+                if r["correct"] == "❌" and r.get("response"):
+                    preview = r["response"].strip().replace("\n", " ")[:200]
+                    print(f"{Fore.MAGENTA}↳ preview: {preview}{Style.RESET_ALL}")
 
     df = pd.DataFrame(rows, columns=[
         "task_id","model","correct","latency_s",
