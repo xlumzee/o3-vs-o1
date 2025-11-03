@@ -92,32 +92,31 @@ def grade(row, expected_exact, expected_contains):
 
     # ---- logic_1: mislabeled boxes ----
     if task == "logic_1":
-        normalized = ans.lower()
-        # 1) Prefer explicit BOX: X extraction (A/B/C)
-        m = _re.search(r"box\s*:\s*([abc])\b", normalized)
+        normalized = ans.strip().lower()
+        # Exact format wins
+        m = _re.search(r"\bbox\s*:\s*([abc])\b", normalized)
         if m:
             return "✅" if m.group(1) == "c" else "❌"
-        # 2) Otherwise accept well-known phrasing variants
-        phrases = [
-            "box that is labeled \"apples and oranges\"",
-            "box that is labeled 'apples and oranges'",
-            "box labeled “apples and oranges”",
-            "box labeled 'apples and oranges'",
-            "box labeled \"apples and oranges\"",
-            "box labeled apples and oranges",
-            "apples+oranges"
-        ]
-        return "✅" if any(p in normalized for p in phrases) else "❌"
+
+        # Phrasing variants: “apples and oranges” / “both fruits” / “mixed”
+        patt = _re.compile(
+            r"(labeled|labelled)?\s*['\"]?\b(apples\s*(?:and|&)\s*oranges|both\s+fruits|mixed)\b['\"]?",
+            _re.I
+        )
+        return "✅" if patt.search(normalized) else "❌"
 
     # ---- math_1: sum of squares f(120) ----
     if task == "math_1":
         target = "583220"
-        # Strategy: if there's a clean single integer, use it; otherwise take the LAST integer appearing
+        # Prefer a standalone final answer if the model used a 'final' tag
+        final = _re.search(r"(?:final(?: answer)?\s*[:=]\s*)(-?\d+)", ans, flags=_re.I)
+        if final:
+            return "✅" if final.group(1) == target else "❌"
         nums = _re.findall(r"-?\d+", ans)
         if not nums:
             return "❌"
-        candidate = nums[-1]  # typically the final answer
-        return "✅" if candidate == target else "❌"
+        # If multiple numbers, take the one that appears after 'final' or the last
+        return "✅" if nums[-1] == target else "❌" 
 
     # ---- code_1: Fibonacci fix + asserts ----
     if task == "code_1":

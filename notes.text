@@ -43,4 +43,7 @@ model correct  avg_latency_s  avg_cost_usd  avg_reason_toks
    o1     0/3           5.09      0.050200              0.0
    o3     2/3           4.93      0.002768              0.0
 
-I will now be updating the logic for the grader, which 
+I will now be updating the logic for the grader, which is a prompt tweak which should make o3 better and o1 slightly better.
+Made logic_1 unambiguous
+making the math_1 grading more robust with a bit of flexibility
+making logic_1 grading better - more forgiving
