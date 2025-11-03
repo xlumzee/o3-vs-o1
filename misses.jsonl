@@ -1,0 +1,4 @@
+{"task_id": "logic_1", "model": "o1-2024-12-17", "latency_s": 1.96, "cost_usd": 0.008775, "response": ""}
+{"task_id": "logic_1", "model": "o3-2025-04-16", "latency_s": 1.33, "cost_usd": 0.000658, "response": ""}
+{"task_id": "math_1", "model": "o1-2024-12-17", "latency_s": 2.18, "cost_usd": 0.01791, "response": ""}
+{"task_id": "math_1", "model": "o3-2025-04-16", "latency_s": 1.84, "cost_usd": 0.001108, "response": ""}

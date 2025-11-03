@@ -47,3 +47,38 @@ I will now be updating the logic for the grader, which is a prompt tweak which s
 Made logic_1 unambiguous
 making the math_1 grading more robust with a bit of flexibility
 making logic_1 grading better - more forgiving
+
+[o1] logic_1 | 485 toks | 3.78 s | $0.02582 ❌
+[o3] logic_1 | 146 toks | 2.01 s | $0.00073 ✅
+[o1] math_1 | 1066 toks | 4.94 s | $0.06207 ❌
+[o3] math_1 | 242 toks | 3.32 s | $0.00168 ✅
+[o1] code_1 | 1121 toks | 6.21 s | $0.06290 ❌
+[o3] code_1 | 609 toks | 6.04 s | $0.00429 ❌
+
+
+After changing a bunch of code 
+
+[o1] logic_1 | 485 toks | 3.52 s | $0.02582 ❌ id=resp_03f552f4ee26980f006907f332c30c8197b3427eef552b0ac6
+[o3] logic_1 | 146 toks | 1.53 s | $0.00073 ✅ id=resp_034ad87ff584e3aa006907f335c9e48196882259b845e790ff
+[o1] math_1 | 1066 toks | 4.42 s | $0.06207 ❌ id=resp_07540d177c68c749006907f337556c8196acc6928c7bf461ee
+[o3] math_1 | 554 toks | 6.05 s | $0.00418 ❌ id=resp_06e94072045d69a2006907f33bc21881979c27c67239422a6d
+[o1] code_1 | 291 toks | 3.47 s | $0.01310 ✅ id=resp_06d5cdd6294a54bf006907f341cf3c8197b84b71e23c3fdc0c
+[o3] code_1 | 609 toks | 5.19 s | $0.00429 ❌ id=resp_0a4da76ca1929991006907f34548088195b05b0055bb2d0261
+
+💰 Estimated total cost: $0.1102
+        model correct  avg_latency_s  avg_cost_usd  avg_reason_toks
+o1-2024-12-17     1/3       3.803333      0.033660              0.0
+o3-2025-04-16     1/3       4.256667      0.003067              0.0
+
+[o1] logic_1 | 485 toks | 2.92 s | $0.02582 ❌ id=resp_0ba0abf3c19b71b5006907f35557088193a025a362c5b9c3e2
+[o3] logic_1 | 210 toks | 3.52 s | $0.00124 ✅ id=resp_0345ef4a0f890c86006907f357f4c88196be2e495e7b5b490f
+[o1] math_1 | 1066 toks | 9.04 s | $0.06207 ❌ id=resp_04ebe5d8bbfdabcd006907f35b79dc81959601fc9e5418d8f0
+[o3] math_1 | 498 toks | 4.8 s | $0.00373 ✅ id=resp_0fbe59ebe3f8c713006907f36482908196a3a31ffcbb038a50
+[o1] code_1 | 1121 toks | 3.9 s | $0.06290 ❌ id=resp_0dda70228955d07b006907f3694ea8819793da43eeb743d111
+[o3] code_1 | 609 toks | 5.61 s | $0.00429 ❌ id=resp_0aaf93eda785fa89006907f36d3a7481909a174c1edd17fe65
+
+💰 Estimated total cost: $0.1600
+        model correct  avg_latency_s  avg_cost_usd  avg_reason_toks
+o1-2024-12-17     0/3       5.286667      0.050260              0.0
+o3-2025-04-16     2/3       4.643333      0.003088              0.0
+
