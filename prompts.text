@@ -1,3 +1,5 @@
+## Logic Benchmark Prompt
+
 You have three boxes with the following labels:
 - Box A: "apples"
 - Box B: "oranges"  
@@ -11,10 +13,10 @@ Your task: Determine which single box you should draw one item from in order to 
 3. How you would relabel each box based on what you draw
 
 Be concise but complete in your explanation.
-```
+
 
 ## Math Benchmark Prompt
-```
+
 Given the function f(n) = Σ(k²) for k=1 to n (the sum of squares from 1 to n):
 
 Calculate f(120) exactly. 
@@ -25,10 +27,11 @@ Show your work, including:
 - The final exact numerical answer
 
 Do not use approximations. Provide the precise integer result.
-```
+
+
 
 ## Code Benchmark Prompt
-```
+
 The following Python function is supposed to return the nth Fibonacci number, but it produces an incorrect result when n=1:
 
 def fibonacci(n):
